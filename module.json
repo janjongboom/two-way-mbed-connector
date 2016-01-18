@@ -1,0 +1,26 @@
+{
+  "name": "example-mbedos-blinky",
+  "version": "1.0.0",
+  "description": "simple example program to blink an LED on an mbed board with mbed OS",
+  "keywords": [
+    "blinky",
+    "mbed OS",
+    "getting started",
+    "mbed",
+    "mbed-official"
+  ],
+  "author": "mbedAustin",
+  "homepage": "http://github.com/ARMmbed/example-mbedos-blinky",
+  "licenses": [
+    {
+      "url": "https://spdx.org/licenses/Apache-2.0",
+      "type": "Apache-2.0"
+    }
+  ],
+  "dependencies": {
+    "mbed-drivers": "*",
+    "mbed-client": "^1.2.18"
+  },
+  "targetDependencies": {},
+  "bin": "./source"
+}
