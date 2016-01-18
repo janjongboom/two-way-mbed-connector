@@ -1,0 +1,14 @@
+{
+  "name": "connector-webserver",
+  "version": "1.0.0",
+  "description": "Simple node.js server that listens to notifications from mbed connector",
+  "main": "connector-web.js",
+  "author": "Jan Jongboom <jan.jongboom@arm.com>",
+  "license": "WTFPL",
+  "dependencies": {
+    "body-parser": "^1.14.2",
+    "express": "^4.13.3",
+    "request": "^2.67.0",
+    "socket.io": "^1.4.4"
+  }
+}

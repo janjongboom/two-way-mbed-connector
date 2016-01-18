@@ -31,8 +31,8 @@
 using namespace mbed::util;
 
 static DigitalOut red(YOTTA_CFG_HARDWARE_PINS_D5);
-static DigitalOut green(YOTTA_CFG_HARDWARE_PINS_D6);
-static DigitalOut blue(YOTTA_CFG_HARDWARE_PINS_D7);
+static DigitalOut blue(YOTTA_CFG_HARDWARE_PINS_D6);
+static DigitalOut green(YOTTA_CFG_HARDWARE_PINS_D7);
 
 Serial output(USBTX, USBRX);
 
@@ -277,6 +277,16 @@ public:
     void value_updated(M2MBase *base, M2MBase::BaseType type) {
         output.printf("\nValue updated of Object name %s and Type %d\n",
                base->name().c_str(), type);
+
+        M2MResource* res = (M2MResource*)base;
+        uint8_t* buffer = NULL;
+        uint32_t length = 0;
+        res->get_value(buffer, length);
+        output.printf("Got data len=%d data=%s\n", length, (char*)buffer);
+
+        red = buffer[0] == 'R';
+        green = buffer[0] == 'G';
+        blue = buffer[0] == 'B';
     }
 
     void test_update_register() {

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Control device {{name}}!</title>
+    <style>
+      body { font-family: 'Helvetica', 'Arial', sans-serif; }
+      h1 { font-weight: 300; }
+      #last_data { font-size: 1.1em; }
+      #buttons {
+        margin-top: 3em;
+        text-align: center;
+      }
+      button {
+        font-weight: 300;
+        font-size: 1.5em;
+        padding: 1em;
+        margin: 0 2em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>{{name}}</h1>
+    <p id="last_data">Last data on channel: <strong class="btn_count">{{count}}</strong></p>
+    <div id="buttons">
+      <button id="red">Red</button>
+      <button id="green">Green</button>
+      <button id="blue">Blue</button>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      var socket = io(location.origin);
+      socket.on('{{name}}', function (data) {
+        document.querySelector('.btn_count').textContent = data;
+      });
+
+      document.querySelector('#red').onclick = function() {
+        socket.emit('color', { id: '{{name}}', color: 'R' });
+      };
+      document.querySelector('#green').onclick = function() {
+        socket.emit('color', { id: '{{name}}', color: 'G' });
+      };
+      document.querySelector('#blue').onclick = function() {
+        socket.emit('color', { id: '{{name}}', color: 'B' });
+      };
+    </script>
+  </body>
+</html>
