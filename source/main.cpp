@@ -15,7 +15,7 @@
  */
 #include "sockets/UDPSocket.h"
 #include "EthernetInterface.h"
-#include "mbed-drivers/test_env.h"
+#include "test_env.h"
 #include "mbed-client/m2minterfacefactory.h"
 #include "mbed-client/m2mdevice.h"
 #include "mbed-client/m2minterfaceobserver.h"
@@ -30,11 +30,11 @@
 
 using namespace mbed::util;
 
+Serial output(USBTX, USBRX);
+
 static DigitalOut red(YOTTA_CFG_HARDWARE_PINS_D5);
 static DigitalOut blue(YOTTA_CFG_HARDWARE_PINS_D6);
 static DigitalOut green(YOTTA_CFG_HARDWARE_PINS_D7);
-
-Serial output(USBTX, USBRX);
 
 //Select binding mode: UDP or TCP
 M2MInterface::BindingMode SOCKET_MODE = M2MInterface::UDP;
@@ -89,9 +89,9 @@ public:
         // setup its name, resource type, life time, connection mode,
         // Currently only LwIPv4 is supported.
 
-    	// Randomizing listening port for Certificate mode connectivity
-    	srand(time(NULL));
-    	uint16_t port = rand() % 65535 + 12345;
+	// Randomizing listening port for Certificate mode connectivity
+	srand(time(NULL));
+	uint16_t port = rand() % 65535 + 12345;
 
         _interface = M2MInterfaceFactory::create_interface(*this,
                                                   ENDPOINT_NAME,
@@ -139,41 +139,72 @@ public:
         return device;
     }
 
-    M2MObject* create_generic_object() {
-        _object = M2MInterfaceFactory::create_object("Test");
-        if(_object) {
-            M2MObjectInstance* inst = _object->create_object_instance();
-            if(inst) {
-                    M2MResource* res = inst->create_dynamic_resource("D",
-                                                                     "ResourceTest",
-                                                                     M2MResourceInstance::INTEGER,
-                                                                     true);
-                    char buffer[20];
-                    int size = sprintf(buffer,"%d",_value);
-                    res->set_operation(M2MBase::GET_PUT_ALLOWED);
-                    res->set_value((const uint8_t*)buffer,
-                                   (const uint32_t)size);
-                    _value++;
-
-                    inst->create_static_resource("S",
-                                                 "ResourceTest",
-                                                 M2MResourceInstance::STRING,
-                                                 STATIC_VALUE,
-                                                 sizeof(STATIC_VALUE)-1);
-            }
+    void disco(int8_t turns_left, int16_t delay_ms) {
+        if (turns_left > 0) {
+            // create a function pointer to self (with 2 arguments and void return type)
+            FunctionPointer2<void, int8_t, int16_t> fp(this, &MbedClient::disco);
+            // call self in delay_ms ms. with turns_left one lower than before
+            minar::Scheduler::postCallback(fp.bind(--turns_left, delay_ms))
+                .delay(minar::milliseconds(delay_ms));
         }
-        return _object;
+
+        red   = turns_left % 6 == 0 || turns_left % 6 == 1 || turns_left % 6 == 2;
+        green = turns_left % 6 == 2 || turns_left % 6 == 3 || turns_left % 6 == 4;
+        blue  = turns_left % 6 == 4 || turns_left % 6 == 5 || turns_left % 6 == 0;
+    }
+
+    void execute_disco(void* a_args) {
+        int8_t* args = (int8_t*)a_args;
+
+        int8_t turns_left = args[0];
+        int16_t delay_ms = (args[1] << 8) + args[2];
+
+        output.printf("disco time turns=%d delay=%d!\r\n", turns_left, delay_ms);
+
+        disco(turns_left, delay_ms);
+    }
+
+    M2MObject* create_led_object() {
+        auto led = M2MInterfaceFactory::create_object("TriColorLED");
+        auto inst = led->create_object_instance();
+
+        // dynamic resources of type boolean, not observable (so no notifications)
+        auto res_red = inst->create_dynamic_resource("Red", "5850", M2MResourceInstance::BOOLEAN, false);
+        auto res_green = inst->create_dynamic_resource("Green", "5850", M2MResourceInstance::BOOLEAN, false);
+        auto res_blue = inst->create_dynamic_resource("Blue", "5850", M2MResourceInstance::BOOLEAN, false);
+
+        // a function can also be declared, by operation POST and setting execute function
+        auto disco = inst->create_dynamic_resource("Disco", "function", M2MResourceInstance::INTEGER, false);
+        disco->set_operation(M2MBase::POST_ALLOWED);
+        disco->set_execute_function(execute_callback(this, &MbedClient::execute_disco));
+
+        // set up read/write operations and initial value of the resources
+        set_up_led(res_red, red);
+        set_up_led(res_green, green);
+        set_up_led(res_blue, blue);
+
+        return led;
+    }
+
+    void set_up_led(M2MResource* res, DigitalOut led) {
+        // allow writing and reading
+        res->set_operation(M2MBase::GET_PUT_ALLOWED);
+
+        // copy the current value of the LED (as char* to the resource)
+        char buffer[1];
+        int size = sprintf(buffer, "%d", !!led);
+        res->set_value((const uint8_t*)buffer, (const uint32_t)size);
     }
 
     void update_resource() {
-        output.printf("updating resource to %d\r\n", _value);
         if(_object) {
+            output.printf("updating resource to %d\r\n", _value);
             M2MObjectInstance* inst = _object->object_instance();
             if(inst) {
                     M2MResource* res = inst->resource("D");
 
                     char buffer[20];
-                    int size = sprintf(buffer, "%d", _value);
+                    int size = sprintf(buffer,"%d",_value);
                     res->set_value((const uint8_t*)buffer,
                                    (const uint32_t)size);
                     _value++;
@@ -277,16 +308,6 @@ public:
     void value_updated(M2MBase *base, M2MBase::BaseType type) {
         output.printf("\nValue updated of Object name %s and Type %d\n",
                base->name().c_str(), type);
-
-        M2MResource* res = (M2MResource*)base;
-        uint8_t* buffer = NULL;
-        uint32_t length = 0;
-        res->get_value(buffer, length);
-        output.printf("Got data len=%d data=%s\n", length, (char*)buffer);
-
-        red = buffer[0] == 'R';
-        green = buffer[0] == 'G';
-        blue = buffer[0] == 'B';
     }
 
     void test_update_register() {
@@ -330,10 +351,18 @@ void app_start(int /*argc*/, char* /*argv*/[]) {
     // This sets up the network interface configuration which will be used
     // by LWM2M Client API to communicate with mbed Device server.
     eth.init(); //Use DHCP
-    eth.connect();
+    if (eth.connect() == 0) {
+        output.printf("Connected!\r\n");
+        }
+    else {
+        output.printf("Failed to form a connection!\r\n");
+    }
 
-    lwipv4_socket_init();
-    output.printf("IP address %s\r\n", eth.getIPAddress());
+    if (lwipv4_socket_init() != 0) {
+        output.printf("Error on lwipv4_socket_init!\r\n");
+    }
+
+    output.printf("IP address is %s\r\n", eth.getIPAddress());
     output.printf("Device name %s\r\n", MBED_ENDPOINT_NAME);
 
     // On press of SW3 button on K64F board, example application
@@ -356,13 +385,13 @@ void app_start(int /*argc*/, char* /*argv*/[]) {
     M2MDevice* device_object = mbed_client.create_device_object();
 
     // Create Generic object specifying custom resources
-    M2MObject* generic_object = mbed_client.create_generic_object();
+    M2MObject* led_object = mbed_client.create_led_object();
 
     // Add all the objects that you would like to register
     // into the list and pass the list for register API.
     M2MObjectList object_list;
     object_list.push_back(device_object);
-    object_list.push_back(generic_object);
+    object_list.push_back(led_object);
 
     mbed_client.set_register_object(register_object);
 
@@ -370,4 +399,7 @@ void app_start(int /*argc*/, char* /*argv*/[]) {
     FunctionPointer2<void, M2MSecurity*, M2MObjectList> fp(&mbed_client, &MbedClient::test_register);
     minar::Scheduler::postCallback(fp.bind(register_object,object_list));
     minar::Scheduler::postCallback(&mbed_client,&MbedClient::test_update_register).period(minar::milliseconds(25000));
+
+    // Also start the initial disco effect, we don't want this higher up, because app_start() can block
+    mbed_client.disco(50, 200);
 }

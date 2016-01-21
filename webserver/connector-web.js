@@ -27,12 +27,12 @@ if (!process.env.TOKEN) {
 }
 
 /**
- * Get the status of a device (on the /Test/0/D endpoint)
+ * Get the status of a device (on the /Test5/0/D endpoint)
  */
 app.get('/status/:id', function (req, res, next) {
   // first, we make a request to connector to get the status. This is an async request.
   request({
-    uri: 'https://api.connector.mbed.com/endpoints/' + req.params.id + '/Test/0/D',
+    uri: 'https://api.connector.mbed.com/endpoints/' + req.params.id + '/Test5/0/D',
     json: true,
     headers: {
       'Authorization': 'Bearer ' + process.env.TOKEN
@@ -81,9 +81,9 @@ app.get('/status/:id', function (req, res, next) {
  */
 app.put('/notification', function (req, res, next) {
   // uncomment this to debug:
-  // console.log('received a notification', JSON.stringify(req.body));
 
   if (req.body['async-responses']) {
+    console.log('received async response', JSON.stringify(req.body));
 
     // this is the async-responses triggered from /status/:id
     req.body['async-responses'].forEach(function(asyncResp) {
@@ -94,6 +94,8 @@ app.put('/notification', function (req, res, next) {
 
   }
   else if (req.body['notifications']) {
+    console.log('received notification', JSON.stringify(req.body));
+
     // a notification comes in, we can now act upon this
     req.body['notifications'].forEach(function(notification) {
       // log it
@@ -113,7 +115,7 @@ app.put('/notification', function (req, res, next) {
  */
 function setColor(id, color) {
   request.put({
-    uri: 'https://api.connector.mbed.com/endpoints/' + id + '/Test/0/D',
+    uri: 'https://api.connector.mbed.com/endpoints/' + id + '/Test5/0/D',
     body: color,
     headers: {
       'Authorization': 'Bearer ' + process.env.TOKEN
