@@ -2,9 +2,7 @@
 
 Let's say I have a tri-color LED and want to make a small disco effect, by toggling the three channels every few hundred milliseconds, and then stop after 10 iterations.
 
-<video autoplay="true" controls="false" loop="true">
-    <source src="assets/disco.mp4" type="video/mp4">
-</video>
+<video autoplay="true" muted="true" loop="true"><source src="https://github.com/janjongboom/two-way-mbed-connector/raw/master/article/assets/disco.mp4" type="video/mp4"></source></video>
 
 Easy enough when doing traditional embedded development.
 
