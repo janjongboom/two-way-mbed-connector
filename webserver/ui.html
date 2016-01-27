@@ -21,6 +21,8 @@
   <body>
     <h1>{{name}}</h1>
     <p id="last_data">Last data on channel: <strong class="btn_count">{{count}}</strong></p>
+    <button id="blink">Blink!</button>
+    <button id="change-blink">Change blink</button>
     <div id="buttons">
       <button id="red">Red</button>
       <button id="green">Green</button>
@@ -33,6 +35,12 @@
         document.querySelector('.btn_count').textContent = data;
       });
 
+      document.querySelector('#blink').onclick = function() {
+        socket.emit('blink', { id: '{{name}}' });
+      };
+      document.querySelector('#change-blink').onclick = function() {
+        socket.emit('change-blink', { id: '{{name}}', pattern: prompt('Pattern?') });
+      };
       document.querySelector('#red').onclick = function() {
         socket.emit('color', { id: '{{name}}', color: 'R' });
       };

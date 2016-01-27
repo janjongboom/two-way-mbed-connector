@@ -32,7 +32,7 @@ if (!process.env.TOKEN) {
 app.get('/status/:id', function (req, res, next) {
   // first, we make a request to connector to get the status. This is an async request.
   request({
-    uri: 'https://api.connector.mbed.com/endpoints/' + req.params.id + '/Test5/0/D',
+    uri: 'https://api.connector.mbed.com/endpoints/' + req.params.id + '/3200/0/5501',
     json: true,
     headers: {
       'Authorization': 'Bearer ' + process.env.TOKEN
@@ -69,6 +69,17 @@ app.get('/status/:id', function (req, res, next) {
         // And render!
         res.set('Content-Type', 'text/html');
         res.send(data);
+
+        request.put({
+          uri: 'https://api.connector.mbed.com/subscriptions/' + req.params.id + '/3200/0/5501',
+          json: true,
+          headers: {
+            'Authorization': 'Bearer ' + process.env.TOKEN
+          }
+        }, function (aErr, aResp, aBody) {
+          console.log('Made subscription', aErr, aResp.statusCode, aBody);
+        });
+        // '
       });
     });
   });
@@ -80,13 +91,15 @@ app.get('/status/:id', function (req, res, next) {
  *    curl -X PUT -v -H 'Content-Type: application/json' -H 'Authorization: Bearer YOUR_AUTH_TOKEN' -d '{ "url": "http://YOUR_URL/notification" }' https://api.connector.mbed.com/notification/callback
  */
 app.put('/notification', function (req, res, next) {
-  // uncomment this to debug:
+  // just pretend everythign is always OK otherwise connector becomes one big @&* bia@&*#&
+  res.send('OK');
 
   if (req.body['async-responses']) {
     console.log('received async response', JSON.stringify(req.body));
 
     // this is the async-responses triggered from /status/:id
     req.body['async-responses'].forEach(function(asyncResp) {
+      if (!asyncResp.payload) return;
       // we decode the body (was base64) and post a message on the eventbus
       var body = new Buffer(asyncResp.payload, 'base64');
       ee.emit(asyncResp.id, body);
@@ -98,6 +111,7 @@ app.put('/notification', function (req, res, next) {
 
     // a notification comes in, we can now act upon this
     req.body['notifications'].forEach(function(notification) {
+      if (!notification.payload) return;
       // log it
       console.log('New event for', notification.ep, notification.path,
         new Buffer(notification.payload, 'base64').toString('utf-8'));
@@ -106,8 +120,6 @@ app.put('/notification', function (req, res, next) {
     });
 
   }
-
-  res.send('OK');
 });
 
 /**
@@ -130,6 +142,27 @@ io.on('connection', function (socket) {
   socket.on('color', function (data) {
     setColor(data.id, data.color);
   });
+  socket.on('blink', function(data) {
+    request.post({
+      uri: 'https://api.connector.mbed.com/endpoints/' + data.id + '/3201/0/5850',
+      headers: {
+        'Authorization': 'Bearer ' + process.env.TOKEN
+      }
+    }, function(err, res, body) {
+      console.log('blink response', err, res.statusCode, body);
+    });
+  });
+  socket.on('change-blink', function(data) {
+    request.put({
+      uri: 'https://api.connector.mbed.com/endpoints/' + data.id + '/3201/0/5853',
+      body: data.pattern,
+      headers: {
+        'Authorization': 'Bearer ' + process.env.TOKEN
+      }
+    }, function(err, res, body) {
+      console.log('change-blink response', err, res.statusCode, body);
+    });
+  });
 });
 
 /**
@@ -137,4 +170,16 @@ io.on('connection', function (socket) {
  */
 server.listen(process.env.PORT || 6500, process.env.IP || '0.0.0.0', function () {
   console.log('Listening on port', process.env.PORT || 6500);
+
+  request.put({
+    uri: 'https://api.connector.mbed.com/notification/callback',
+    json: true,
+    body: { 'url' : 'http://two-way-mbed-connector-janjongboom1.c9users.io/notification' },
+    headers: {
+      'Authorization': 'Bearer ' + process.env.TOKEN
+    }
+  }, function (err, res, body) {
+    console.log('Registered notification', err, res.statusCode, body);
+  });
+
 });
