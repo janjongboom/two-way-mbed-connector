@@ -27,7 +27,7 @@ if (!process.env.TOKEN) {
 }
 
 /**
- * Get the status of a device (on the /Test5/0/D endpoint)
+ * Get the status of a device (on the /3200/0/5501 endpoint, which is number of button clicks)
  */
 app.get('/status/:id', function (req, res, next) {
   // first, we make a request to connector to get the status. This is an async request.
@@ -49,7 +49,7 @@ app.get('/status/:id', function (req, res, next) {
     var timedOut = false;
     var to = setTimeout(function() {
       timedOut = true;
-      next('No response within 5s. probably need to re-register the notification channel');
+      next('No response within 5s. Connector lost us, need to wait 30(?) seconds before we get notifications again...');
     }, 5000);
 
     // once the message is in, we'll respond with the value posted
@@ -64,7 +64,7 @@ app.get('/status/:id', function (req, res, next) {
 
         // Fill the fields in with data from connector
         data = data.replace(/\{\{name\}\}/g, req.params.id);
-        data = data.replace(/\{\{count\}\}/g, payload.toString('utf-8'));
+        data = data.replace(/\{\{count\}\}/g, (payload[0] << 8 + payload[1]));
 
         // And render!
         res.set('Content-Type', 'text/html');
