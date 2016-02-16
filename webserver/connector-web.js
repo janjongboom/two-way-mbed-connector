@@ -64,7 +64,7 @@ app.get('/status/:id', function (req, res, next) {
 
         // Fill the fields in with data from connector
         data = data.replace(/\{\{name\}\}/g, req.params.id);
-        data = data.replace(/\{\{count\}\}/g, (payload[0] << 8 + payload[1]));
+        data = data.replace(/\{\{count\}\}/g, (payload[0] << 8) + payload[1]);
 
         // And render!
         res.set('Content-Type', 'text/html');
@@ -114,9 +114,10 @@ app.put('/notification', function (req, res, next) {
       if (!notification.payload) return;
       // log it
       console.log('New event for', notification.ep, notification.path,
-        new Buffer(notification.payload, 'base64').toString('utf-8'));
+        new Buffer(notification.payload, 'base64'));
       // and send to socket
-      io.sockets.emit(notification.ep, new Buffer(notification.payload, 'base64').toString('utf-8'));
+      var payload = new Buffer(notification.payload, 'base64');
+      io.sockets.emit(notification.ep, (payload[0] << 8) + payload[1]);
     });
 
   }
